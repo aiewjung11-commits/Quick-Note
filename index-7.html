@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a2d6e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Quick Note - โน้ตด่วน</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    font-family: 'Segoe UI', 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
+    background:#f0f6ff; color:#0d1f3c;
+    display:flex; flex-direction:column;
+    overscroll-behavior:none;
+  }
+
+  /* ===== Topbar ===== */
+  .topbar {
+    background:linear-gradient(135deg,#0a2d6e,#1a5fd4);
+    color:#fff; padding:14px 16px 12px;
+    position:sticky; top:0; z-index:20;
+    box-shadow:0 2px 10px rgba(10,45,110,.25);
+  }
+  .topbar h1 { font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .topbar h1 small { font-weight:400; opacity:.75; font-size:.72rem; margin-left:auto; }
+
+  /* ===== Quick capture ===== */
+  .capture {
+    background:#fff; margin:12px 12px 8px; border-radius:16px;
+    border:1px solid #c8daf5; box-shadow:0 3px 12px rgba(26,95,212,.10);
+    padding:10px;
+  }
+  .cap-row { display:flex; gap:8px; align-items:flex-end; }
+  #noteInput {
+    flex:1; border:none; outline:none; resize:none;
+    font-size:1.05rem; font-family:inherit; color:#0d1f3c;
+    line-height:1.45; max-height:110px; min-height:44px; padding:10px 6px;
+    background:transparent;
+  }
+  #noteInput::placeholder { color:#8fa8d0; }
+  .btn-mic, .btn-save {
+    width:46px; height:46px; border-radius:13px; border:none;
+    font-size:1.25rem; cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .1s, background .2s;
+  }
+  .btn-mic { background:#eaf1fd; color:#1a5fd4; }
+  .btn-mic.listening { background:#e02d2d; color:#fff; animation:pulse 1s infinite; }
+  .btn-save { background:#1a5fd4; color:#fff; box-shadow:0 3px 8px rgba(26,95,212,.35); }
+  .btn-save:active, .btn-mic:active { transform:scale(.92); }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(224,45,45,.5)} 50%{box-shadow:0 0 0 9px rgba(224,45,45,0)} }
+
+  .cat-row { display:flex; gap:6px; margin-top:8px; overflow-x:auto; padding-bottom:2px; }
+  .cat-chip {
+    border:1.5px solid #c8daf5; background:#fff; color:#2a4a7f;
+    border-radius:20px; padding:6px 13px; font-size:.85rem; font-weight:600;
+    cursor:pointer; white-space:nowrap; transition:all .15s; font-family:inherit;
+  }
+  .cat-chip.active { color:#fff; border-color:transparent; }
+  .cat-chip.active[data-cat="work"]   { background:#1a5fd4; }
+  .cat-chip.active[data-cat="travel"] { background:#0a9e6e; }
+  .cat-chip.active[data-cat="remind"] { background:#e08a00; }
+  .cat-chip.active[data-cat="todo"]   { background:#7a3fd4; }
+
+  /* ===== Filter tabs ===== */
+  .filters {
+    display:flex; gap:6px; padding:2px 12px 8px; overflow-x:auto;
+    position:sticky; top:52px; background:#f0f6ff; z-index:15;
+  }
+  .f-tab {
+    border:1px solid #c8daf5; background:#fff; color:#2a4a7f;
+    border-radius:18px; padding:5px 12px; font-size:.8rem; font-weight:600;
+    cursor:pointer; white-space:nowrap; font-family:inherit;
+  }
+  .f-tab.active { background:#0a2d6e; color:#fff; border-color:#0a2d6e; }
+  .f-tab .cnt { opacity:.65; font-weight:400; margin-left:3px; }
+
+  /* ===== Search ===== */
+  .search-wrap { padding:0 12px 6px; display:none; }
+  .search-wrap.show { display:block; }
+  #searchInput {
+    width:100%; border:1px solid #c8daf5; border-radius:12px;
+    padding:9px 12px; font-size:.95rem; font-family:inherit; outline:none;
+    background:#fff; color:#0d1f3c;
+  }
+
+  /* ===== Notes list ===== */
+  .list { flex:1; overflow-y:auto; padding:2px 12px 90px; }
+  .day-head {
+    font-size:.78rem; font-weight:700; color:#2a4a7f;
+    margin:14px 4px 6px; display:flex; align-items:center; gap:8px;
+  }
+  .day-head::after { content:''; flex:1; height:1px; background:#c8daf5; }
+  .day-head.today { color:#1a5fd4; }
+
+  .note {
+    background:#fff; border:1px solid #c8daf5; border-radius:14px;
+    padding:11px 12px; margin-bottom:8px;
+    display:flex; gap:10px; align-items:flex-start;
+    animation:slideIn .22s ease;
+    border-left:4px solid #c8daf5;
+  }
+  @keyframes slideIn { from{opacity:0; transform:translateY(-8px)} to{opacity:1; transform:none} }
+  .note[data-cat="work"]   { border-left-color:#1a5fd4; }
+  .note[data-cat="travel"] { border-left-color:#0a9e6e; }
+  .note[data-cat="remind"] { border-left-color:#e08a00; }
+  .note[data-cat="todo"]   { border-left-color:#7a3fd4; }
+  .note.done { opacity:.55; }
+  .note.done .n-text { text-decoration:line-through; }
+
+  .n-check {
+    width:24px; height:24px; border-radius:8px; border:2px solid #c8daf5;
+    background:#fff; cursor:pointer; flex-shrink:0; margin-top:1px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.85rem; color:#fff; transition:all .15s;
+  }
+  .note.done .n-check { background:#0a9e6e; border-color:#0a9e6e; }
+  .n-body { flex:1; min-width:0; }
+  .n-text { font-size:.98rem; line-height:1.45; word-wrap:break-word; white-space:pre-wrap; }
+  .n-meta { font-size:.72rem; color:#8fa8d0; margin-top:4px; display:flex; gap:8px; align-items:center; }
+  .n-cat-tag { font-weight:600; }
+  .n-del {
+    border:none; background:none; color:#c8daf5; font-size:1.05rem;
+    cursor:pointer; padding:2px 4px; flex-shrink:0; transition:color .15s;
+  }
+  .n-del:active { color:#e02d2d; }
+
+  .empty { text-align:center; color:#8fa8d0; padding:60px 20px; font-size:.95rem; line-height:1.8; }
+  .empty .big { font-size:2.6rem; }
+
+  /* ===== Toast ===== */
+  .toast {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:#0a2d6e; color:#fff; padding:10px 20px; border-radius:24px;
+    font-size:.88rem; box-shadow:0 4px 16px rgba(10,45,110,.4);
+    transition:transform .25s; z-index:50; display:flex; gap:12px; align-items:center;
+  }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+  .toast button {
+    background:none; border:none; color:#7db4ff; font-weight:700;
+    font-size:.88rem; cursor:pointer; font-family:inherit;
+  }
+
+  .icon-btn {
+    background:rgba(255,255,255,.15); border:none; color:#fff;
+    width:34px; height:34px; border-radius:10px; font-size:1rem; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📝 Quick Note
+    <small id="noteCount"></small>
+    <button class="icon-btn" onclick="toggleSearch()" title="ค้นหา">🔍</button>
+  </h1>
+</div>
+
+<div class="capture">
+  <div class="cap-row">
+    <textarea id="noteInput" placeholder="จดเลย... พิมพ์หรือกดไมค์พูด 🎙" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();saveNote();}"
+      oninput="autoGrow(this)"></textarea>
+    <button class="btn-mic" id="micBtn" onclick="toggleMic()" title="พูดเพื่อจด">🎙</button>
+    <button class="btn-save" onclick="saveNote()" title="บันทึก">➕</button>
+  </div>
+  <div class="cat-row" id="catRow">
+    <button class="cat-chip active" data-cat="work"   onclick="pickCat(this)">💼 งาน</button>
+    <button class="cat-chip" data-cat="todo"   onclick="pickCat(this)">✅ ต้องทำ</button>
+    <button class="cat-chip" data-cat="remind" onclick="pickCat(this)">🔔 เตือน</button>
+    <button class="cat-chip" data-cat="travel" onclick="pickCat(this)">✈️ เที่ยว</button>
+  </div>
+</div>
+
+<div class="search-wrap" id="searchWrap">
+  <input id="searchInput" placeholder="ค้นหาโน้ต..." oninput="render()">
+</div>
+
+<div class="filters" id="filters">
+  <button class="f-tab active" data-f="all"    onclick="pickFilter(this)">ทั้งหมด<span class="cnt"></span></button>
+  <button class="f-tab" data-f="work"   onclick="pickFilter(this)">💼 งาน<span class="cnt"></span></button>
+  <button class="f-tab" data-f="todo"   onclick="pickFilter(this)">✅ ต้องทำ<span class="cnt"></span></button>
+  <button class="f-tab" data-f="remind" onclick="pickFilter(this)">🔔 เตือน<span class="cnt"></span></button>
+  <button class="f-tab" data-f="travel" onclick="pickFilter(this)">✈️ เที่ยว<span class="cnt"></span></button>
+  <button class="f-tab" data-f="open"   onclick="pickFilter(this)">⏳ ค้างอยู่<span class="cnt"></span></button>
+</div>
+
+<div class="list" id="list"></div>
+
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastUndo" style="display:none" onclick="undoDelete()">เลิกทำ</button></div>
+
+<script>
+const KEY = 'quicknote_v1';
+const CAT_INFO = {
+  work:   { label:'💼 งาน',    color:'#1a5fd4' },
+  todo:   { label:'✅ ต้องทำ', color:'#7a3fd4' },
+  remind: { label:'🔔 เตือน',  color:'#e08a00' },
+  travel: { label:'✈️ เที่ยว', color:'#0a9e6e' },
+};
+let notes = JSON.parse(localStorage.getItem(KEY) || '[]');
+let curCat = 'work';
+let curFilter = 'all';
+let lastDeleted = null, undoTimer = null;
+
+function save() { localStorage.setItem(KEY, JSON.stringify(notes)); }
+
+function autoGrow(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,110)+'px'; }
+
+function pickCat(btn) {
+  document.querySelectorAll('.cat-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  curCat = btn.dataset.cat;
+  document.getElementById('noteInput').focus();
+}
+
+function pickFilter(btn) {
+  document.querySelectorAll('.f-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  curFilter = btn.dataset.f;
+  render();
+}
+
+function saveNote() {
+  const inp = document.getElementById('noteInput');
+  const text = inp.value.trim();
+  if (!text) { inp.focus(); return; }
+  notes.unshift({ id: Date.now(), text, cat: curCat, done: false, ts: Date.now() });
+  save();
+  inp.value=''; inp.style.height='auto';
+  render();
+  showToast('บันทึกแล้ว ✓');
+  inp.focus();
+}
+
+function toggleDone(id) {
+  const n = notes.find(n=>n.id===id);
+  if (n) { n.done = !n.done; save(); render(); }
+}
+
+function delNote(id) {
+  const idx = notes.findIndex(n=>n.id===id);
+  if (idx<0) return;
+  lastDeleted = { note: notes[idx], idx };
+  notes.splice(idx,1);
+  save(); render();
+  showToast('ลบแล้ว', true);
+}
+
+function undoDelete() {
+  if (lastDeleted) {
+    notes.splice(lastDeleted.idx, 0, lastDeleted.note);
+    lastDeleted = null;
+    save(); render();
+    hideToast();
+  }
+}
+
+function showToast(msg, withUndo=false) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastUndo').style.display = withUndo?'inline':'none';
+  t.classList.add('show');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(hideToast, withUndo?4000:1500);
+}
+function hideToast(){ document.getElementById('toast').classList.remove('show'); }
+
+function toggleSearch() {
+  const w = document.getElementById('searchWrap');
+  w.classList.toggle('show');
+  if (w.classList.contains('show')) document.getElementById('searchInput').focus();
+  else { document.getElementById('searchInput').value=''; render(); }
+}
+
+function dayLabel(ts) {
+  const d = new Date(ts), now = new Date();
+  const strip = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = (strip(now)-strip(d)) / 86400000;
+  const dstr = d.toLocaleDateString('th-TH', { weekday:'short', day:'numeric', month:'short', year:'2-digit' });
+  if (diff===0) return '📌 วันนี้ · '+dstr;
+  if (diff===1) return 'เมื่อวาน · '+dstr;
+  return dstr;
+}
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render() {
+  const q = (document.getElementById('searchInput').value||'').toLowerCase();
+  let shown = notes.filter(n => {
+    if (curFilter==='open' && n.done) return false;
+    if (curFilter!=='all' && curFilter!=='open' && n.cat!==curFilter) return false;
+    if (q && !n.text.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  // update counts
+  document.querySelectorAll('.f-tab').forEach(b => {
+    const f = b.dataset.f;
+    let c;
+    if (f==='all') c = notes.length;
+    else if (f==='open') c = notes.filter(n=>!n.done).length;
+    else c = notes.filter(n=>n.cat===f).length;
+    b.querySelector('.cnt').textContent = c ? '('+c+')' : '';
+  });
+  document.getElementById('noteCount').textContent = notes.length ? notes.length+' โน้ต' : '';
+
+  const list = document.getElementById('list');
+  if (!shown.length) {
+    list.innerHTML = '<div class="empty"><div class="big">📝</div>ยังไม่มีโน้ต<br>พิมพ์ด้านบนแล้วกด ➕ หรือกดไมค์พูดได้เลย</div>';
+    return;
+  }
+
+  let html = '', lastDay = '';
+  for (const n of shown) {
+    const dl = dayLabel(n.ts);
+    if (dl !== lastDay) {
+      html += `<div class="day-head ${dl.startsWith('📌')?'today':''}">${dl}</div>`;
+      lastDay = dl;
+    }
+    const time = new Date(n.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+    const ci = CAT_INFO[n.cat] || CAT_INFO.work;
+    html += `
+      <div class="note ${n.done?'done':''}" data-cat="${n.cat}">
+        <button class="n-check" onclick="toggleDone(${n.id})">${n.done?'✓':''}</button>
+        <div class="n-body">
+          <div class="n-text">${esc(n.text)}</div>
+          <div class="n-meta"><span class="n-cat-tag" style="color:${ci.color}">${ci.label}</span><span>${time} น.</span></div>
+        </div>
+        <button class="n-del" onclick="delNote(${n.id})">🗑</button>
+      </div>`;
+  }
+  list.innerHTML = html;
+}
+
+/* ===== Voice input (Thai) ===== */
+let recog = null, listening = false;
+function toggleMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('เบราว์เซอร์นี้ไม่รองรับการพูด ใช้ Chrome นะครับ'); return; }
+  if (listening) { recog.stop(); return; }
+  recog = new SR();
+  recog.lang = 'th-TH';
+  recog.interimResults = true;
+  recog.continuous = false;
+  const inp = document.getElementById('noteInput');
+  const base = inp.value ? inp.value + ' ' : '';
+  recog.onresult = e => {
+    let t = '';
+    for (const r of e.results) t += r[0].transcript;
+    inp.value = base + t;
+    autoGrow(inp);
+  };
+  recog.onstart = () => { listening=true; document.getElementById('micBtn').classList.add('listening'); };
+  recog.onend = () => {
+    listening=false; document.getElementById('micBtn').classList.remove('listening');
+    if (inp.value.trim()) inp.focus();
+  };
+  recog.onerror = () => { listening=false; document.getElementById('micBtn').classList.remove('listening'); };
+  recog.start();
+}
+
+/* ===== PWA ===== */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+render();
+</script>
+</body>
+</html>
