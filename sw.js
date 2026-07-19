@@ -1,4 +1,4 @@
-const CACHE = 'quicknote-v1';
+const CACHE = 'quicknote-v3';
 const FILES = ['./index.html', './manifest.json', './icon-192-1.png', './icon-512-1.png'];
 
 self.addEventListener('install', e => {

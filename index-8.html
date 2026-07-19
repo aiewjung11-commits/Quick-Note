@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a2d6e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192-1.png">
+<link rel="apple-touch-icon" href="icon-192-1.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Quick Note - โน้ตด่วน</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    font-family: 'Segoe UI', 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
+    background:#f0f6ff; color:#0d1f3c;
+    display:flex; flex-direction:column;
+    overscroll-behavior:none;
+    transition:background .3s;
+  }
+  body.space-personal { background:#f2fbf5; }
+
+  /* ===== Topbar ===== */
+  .topbar {
+    background:linear-gradient(135deg,#0a2d6e,#1a5fd4);
+    color:#fff; padding:12px 14px 10px;
+    position:sticky; top:0; z-index:20;
+    box-shadow:0 2px 10px rgba(10,45,110,.25);
+    transition:background .3s;
+  }
+  body.space-personal .topbar { background:linear-gradient(135deg,#0a6e46,#12a56b); box-shadow:0 2px 10px rgba(10,110,70,.25); }
+  .topbar-row { display:flex; align-items:center; gap:8px; }
+  .topbar h1 { font-size:1.05rem; font-weight:700; flex:1; display:flex; align-items:center; gap:7px; }
+  .topbar h1 small { font-weight:400; opacity:.75; font-size:.7rem; }
+  .icon-btn {
+    background:rgba(255,255,255,.15); border:none; color:#fff;
+    width:34px; height:34px; border-radius:10px; font-size:1rem; cursor:pointer; flex-shrink:0;
+  }
+
+  /* ===== Space switch ===== */
+  .space-switch {
+    display:flex; background:rgba(255,255,255,.18); border-radius:12px;
+    padding:3px; margin-top:9px; gap:3px;
+  }
+  .space-btn {
+    flex:1; border:none; border-radius:9px; padding:8px 4px;
+    font-size:.92rem; font-weight:700; font-family:inherit; cursor:pointer;
+    background:transparent; color:rgba(255,255,255,.75);
+    transition:all .2s;
+  }
+  .space-btn.active { background:#fff; color:#0a2d6e; box-shadow:0 2px 6px rgba(0,0,0,.15); }
+  body.space-personal .space-btn.active { color:#0a6e46; }
+
+  /* ===== Quick capture ===== */
+  .capture {
+    background:#fff; margin:12px 12px 8px; border-radius:16px;
+    border:1px solid #c8daf5; box-shadow:0 3px 12px rgba(26,95,212,.10);
+    padding:10px; transition:border-color .3s;
+  }
+  body.space-personal .capture { border-color:#bfe8cf; box-shadow:0 3px 12px rgba(18,165,107,.10); }
+  .cap-row { display:flex; gap:8px; align-items:flex-end; }
+  #noteInput {
+    flex:1; border:none; outline:none; resize:none;
+    font-size:1.05rem; font-family:inherit; color:#0d1f3c;
+    line-height:1.45; max-height:110px; min-height:44px; padding:10px 6px;
+    background:transparent;
+  }
+  #noteInput::placeholder { color:#8fa8d0; }
+  .btn-mic, .btn-save {
+    width:46px; height:46px; border-radius:13px; border:none;
+    font-size:1.25rem; cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .1s, background .2s;
+  }
+  .btn-mic { background:#eaf1fd; color:#1a5fd4; }
+  .btn-mic.listening { background:#e02d2d; color:#fff; animation:pulse 1s infinite; }
+  .btn-save { background:#1a5fd4; color:#fff; box-shadow:0 3px 8px rgba(26,95,212,.35); }
+  body.space-personal .btn-save { background:#12a56b; box-shadow:0 3px 8px rgba(18,165,107,.35); }
+  .btn-save:active, .btn-mic:active { transform:scale(.92); }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(224,45,45,.5)} 50%{box-shadow:0 0 0 9px rgba(224,45,45,0)} }
+
+  .cat-row { display:flex; gap:6px; margin-top:8px; overflow-x:auto; padding-bottom:2px; }
+  .cat-chip {
+    border:1.5px solid #c8daf5; background:#fff; color:#2a4a7f;
+    border-radius:20px; padding:6px 13px; font-size:.85rem; font-weight:600;
+    cursor:pointer; white-space:nowrap; transition:all .15s; font-family:inherit;
+  }
+  .cat-chip.active { color:#fff; border-color:transparent; background:var(--c,#1a5fd4); }
+
+  /* ===== Filter tabs ===== */
+  .filters {
+    display:flex; gap:6px; padding:2px 12px 8px; overflow-x:auto;
+  }
+  .f-tab {
+    border:1px solid #c8daf5; background:#fff; color:#2a4a7f;
+    border-radius:18px; padding:5px 12px; font-size:.8rem; font-weight:600;
+    cursor:pointer; white-space:nowrap; font-family:inherit;
+  }
+  .f-tab.active { background:#0a2d6e; color:#fff; border-color:#0a2d6e; }
+  body.space-personal .f-tab.active { background:#0a6e46; border-color:#0a6e46; }
+  .f-tab .cnt { opacity:.65; font-weight:400; margin-left:3px; }
+
+  /* ===== Search ===== */
+  .search-wrap { padding:0 12px 6px; display:none; }
+  .search-wrap.show { display:block; }
+  #searchInput {
+    width:100%; border:1px solid #c8daf5; border-radius:12px;
+    padding:9px 12px; font-size:.95rem; font-family:inherit; outline:none;
+    background:#fff; color:#0d1f3c;
+  }
+
+  /* ===== Notes list ===== */
+  .list { flex:1; overflow-y:auto; padding:2px 12px 90px; }
+  .day-head {
+    font-size:.78rem; font-weight:700; color:#2a4a7f;
+    margin:14px 4px 6px; display:flex; align-items:center; gap:8px;
+  }
+  .day-head::after { content:''; flex:1; height:1px; background:#c8daf5; }
+  .day-head.today { color:#1a5fd4; }
+  body.space-personal .day-head.today { color:#12a56b; }
+
+  .note {
+    background:#fff; border:1px solid #c8daf5; border-radius:14px;
+    padding:11px 12px; margin-bottom:8px;
+    display:flex; gap:10px; align-items:flex-start;
+    animation:slideIn .22s ease;
+    border-left:4px solid var(--c,#c8daf5);
+  }
+  @keyframes slideIn { from{opacity:0; transform:translateY(-8px)} to{opacity:1; transform:none} }
+  .note.done { opacity:.55; }
+  .note.done .n-text { text-decoration:line-through; }
+
+  .n-check {
+    width:24px; height:24px; border-radius:8px; border:2px solid #c8daf5;
+    background:#fff; cursor:pointer; flex-shrink:0; margin-top:1px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.85rem; color:#fff; transition:all .15s;
+  }
+  .note.done .n-check { background:#0a9e6e; border-color:#0a9e6e; }
+  .n-body { flex:1; min-width:0; }
+  .n-text { font-size:.98rem; line-height:1.45; word-wrap:break-word; white-space:pre-wrap; }
+  .n-meta { font-size:.72rem; color:#8fa8d0; margin-top:4px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .n-cat-tag { font-weight:600; }
+  .n-move {
+    border:none; background:#f0f6ff; color:#5a7ab0; font-size:.68rem; font-weight:600;
+    border-radius:10px; padding:2px 8px; cursor:pointer; font-family:inherit;
+  }
+  .n-del {
+    border:none; background:none; color:#c8daf5; font-size:1.05rem;
+    cursor:pointer; padding:2px 4px; flex-shrink:0; transition:color .15s;
+  }
+  .n-del:active { color:#e02d2d; }
+
+  .empty { text-align:center; color:#8fa8d0; padding:60px 20px; font-size:.95rem; line-height:1.8; }
+  .empty .big { font-size:2.6rem; }
+
+  /* ===== Toast ===== */
+  .toast {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:#0a2d6e; color:#fff; padding:10px 20px; border-radius:24px;
+    font-size:.88rem; box-shadow:0 4px 16px rgba(10,45,110,.4);
+    transition:transform .25s; z-index:50; display:flex; gap:12px; align-items:center;
+  }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+  .toast button {
+    background:none; border:none; color:#7db4ff; font-weight:700;
+    font-size:.88rem; cursor:pointer; font-family:inherit;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <h1>📝 Quick Note <small id="noteCount"></small></h1>
+    <button class="icon-btn" onclick="toggleSearch()" title="ค้นหา">🔍</button>
+  </div>
+  <div class="space-switch">
+    <button class="space-btn active" data-space="work" onclick="pickSpace('work')">💼 งาน</button>
+    <button class="space-btn" data-space="personal" onclick="pickSpace('personal')">🏠 ส่วนตัว</button>
+  </div>
+</div>
+
+<div class="capture">
+  <div class="cap-row">
+    <textarea id="noteInput" placeholder="จดเลย... พิมพ์หรือกดไมค์พูด 🎙" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();saveNote();}"
+      oninput="autoGrow(this)"></textarea>
+    <button class="btn-mic" id="micBtn" onclick="toggleMic()" title="พูดเพื่อจด">🎙</button>
+    <button class="btn-save" onclick="saveNote()" title="บันทึก">➕</button>
+  </div>
+  <div class="cat-row" id="catRow"></div>
+</div>
+
+<div class="search-wrap" id="searchWrap">
+  <input id="searchInput" placeholder="ค้นหาโน้ต..." oninput="render()">
+</div>
+
+<div class="filters" id="filters"></div>
+
+<div class="list" id="list"></div>
+
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastUndo" style="display:none" onclick="undoDelete()">เลิกทำ</button></div>
+
+<script>
+const KEY = 'quicknote_v2';
+const OLD_KEY = 'quicknote_v1';
+
+const SPACES = {
+  work: {
+    label:'💼 งาน',
+    cats: {
+      todo:   { label:'✅ ต้องทำ',  color:'#1a5fd4' },
+      meet:   { label:'📋 ประชุม',  color:'#7a3fd4' },
+      follow: { label:'🔄 ติดตาม',  color:'#e08a00' },
+      idea:   { label:'💡 ไอเดีย',  color:'#0a8ea0' },
+    }
+  },
+  personal: {
+    label:'🏠 ส่วนตัว',
+    cats: {
+      todo:   { label:'✅ ต้องทำ',  color:'#12a56b' },
+      remind: { label:'🔔 เตือน',   color:'#e08a00' },
+      travel: { label:'✈️ เที่ยว',  color:'#1a5fd4' },
+      shop:   { label:'🛒 ซื้อของ', color:'#c04fa0' },
+    }
+  }
+};
+
+let notes = [];
+let curSpace = localStorage.getItem('quicknote_space') || 'work';
+let curCat = 'todo';
+let curFilter = 'all';
+let lastDeleted = null, undoTimer = null;
+
+/* ===== Load + migrate v1 -> v2 ===== */
+(function load() {
+  const v2 = localStorage.getItem(KEY);
+  if (v2) { notes = JSON.parse(v2); return; }
+  const v1 = localStorage.getItem(OLD_KEY);
+  if (v1) {
+    const old = JSON.parse(v1);
+    notes = old.map(n => {
+      // v1 cats: work, todo, remind, travel
+      if (n.cat === 'work')   return { ...n, space:'work',     cat:'todo' };
+      if (n.cat === 'todo')   return { ...n, space:'personal', cat:'todo' };
+      if (n.cat === 'remind') return { ...n, space:'personal', cat:'remind' };
+      if (n.cat === 'travel') return { ...n, space:'personal', cat:'travel' };
+      return { ...n, space:'personal', cat:'todo' };
+    });
+    save();
+  }
+})();
+
+function save() { localStorage.setItem(KEY, JSON.stringify(notes)); }
+
+function autoGrow(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,110)+'px'; }
+
+/* ===== Space ===== */
+function pickSpace(sp) {
+  curSpace = sp;
+  localStorage.setItem('quicknote_space', sp);
+  curFilter = 'all';
+  curCat = 'todo';
+  document.querySelectorAll('.space-btn').forEach(b => b.classList.toggle('active', b.dataset.space===sp));
+  document.body.classList.toggle('space-personal', sp==='personal');
+  buildCatChips();
+  buildFilters();
+  render();
+}
+
+function buildCatChips() {
+  const cats = SPACES[curSpace].cats;
+  document.getElementById('catRow').innerHTML = Object.entries(cats).map(([id,c]) =>
+    `<button class="cat-chip ${id===curCat?'active':''}" style="--c:${c.color}" onclick="pickCat('${id}',this)">${c.label}</button>`
+  ).join('');
+}
+
+function pickCat(id, btn) {
+  curCat = id;
+  document.querySelectorAll('.cat-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('noteInput').focus();
+}
+
+function buildFilters() {
+  const cats = SPACES[curSpace].cats;
+  let html = `<button class="f-tab ${curFilter==='all'?'active':''}" data-f="all" onclick="pickFilter('all',this)">ทั้งหมด<span class="cnt"></span></button>`;
+  html += Object.entries(cats).map(([id,c]) =>
+    `<button class="f-tab ${curFilter===id?'active':''}" data-f="${id}" onclick="pickFilter('${id}',this)">${c.label}<span class="cnt"></span></button>`
+  ).join('');
+  html += `<button class="f-tab ${curFilter==='open'?'active':''}" data-f="open" onclick="pickFilter('open',this)">⏳ ค้างอยู่<span class="cnt"></span></button>`;
+  document.getElementById('filters').innerHTML = html;
+}
+
+function pickFilter(f, btn) {
+  curFilter = f;
+  document.querySelectorAll('.f-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+/* ===== CRUD ===== */
+function saveNote() {
+  const inp = document.getElementById('noteInput');
+  const text = inp.value.trim();
+  if (!text) { inp.focus(); return; }
+  notes.unshift({ id: Date.now(), text, space: curSpace, cat: curCat, done: false, ts: Date.now() });
+  save();
+  inp.value=''; inp.style.height='auto';
+  render();
+  showToast('บันทึกแล้ว ✓');
+  inp.focus();
+}
+
+function toggleDone(id) {
+  const n = notes.find(n=>n.id===id);
+  if (n) { n.done = !n.done; save(); render(); }
+}
+
+function moveNote(id) {
+  const n = notes.find(n=>n.id===id);
+  if (!n) return;
+  n.space = n.space==='work' ? 'personal' : 'work';
+  if (!SPACES[n.space].cats[n.cat]) n.cat = 'todo';
+  save(); render();
+  showToast('ย้ายไป '+SPACES[n.space].label+' แล้ว');
+}
+
+function delNote(id) {
+  const idx = notes.findIndex(n=>n.id===id);
+  if (idx<0) return;
+  lastDeleted = { note: notes[idx], idx };
+  notes.splice(idx,1);
+  save(); render();
+  showToast('ลบแล้ว', true);
+}
+
+function undoDelete() {
+  if (lastDeleted) {
+    notes.splice(lastDeleted.idx, 0, lastDeleted.note);
+    lastDeleted = null;
+    save(); render();
+    hideToast();
+  }
+}
+
+function showToast(msg, withUndo=false) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastUndo').style.display = withUndo?'inline':'none';
+  t.classList.add('show');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(hideToast, withUndo?4000:1500);
+}
+function hideToast(){ document.getElementById('toast').classList.remove('show'); }
+
+function toggleSearch() {
+  const w = document.getElementById('searchWrap');
+  w.classList.toggle('show');
+  if (w.classList.contains('show')) document.getElementById('searchInput').focus();
+  else { document.getElementById('searchInput').value=''; render(); }
+}
+
+function dayLabel(ts) {
+  const d = new Date(ts), now = new Date();
+  const strip = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = (strip(now)-strip(d)) / 86400000;
+  const dstr = d.toLocaleDateString('th-TH', { weekday:'short', day:'numeric', month:'short', year:'2-digit' });
+  if (diff===0) return '📌 วันนี้ · '+dstr;
+  if (diff===1) return 'เมื่อวาน · '+dstr;
+  return dstr;
+}
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render() {
+  const q = (document.getElementById('searchInput').value||'').toLowerCase();
+  const inSpace = notes.filter(n => (n.space||'personal') === curSpace);
+  let shown = inSpace.filter(n => {
+    if (curFilter==='open' && n.done) return false;
+    if (curFilter!=='all' && curFilter!=='open' && n.cat!==curFilter) return false;
+    if (q && !n.text.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  document.querySelectorAll('.f-tab').forEach(b => {
+    const f = b.dataset.f;
+    let c;
+    if (f==='all') c = inSpace.length;
+    else if (f==='open') c = inSpace.filter(n=>!n.done).length;
+    else c = inSpace.filter(n=>n.cat===f).length;
+    b.querySelector('.cnt').textContent = c ? '('+c+')' : '';
+  });
+  document.getElementById('noteCount').textContent = inSpace.length ? inSpace.length+' โน้ต' : '';
+
+  const list = document.getElementById('list');
+  if (!shown.length) {
+    list.innerHTML = '<div class="empty"><div class="big">📝</div>ยังไม่มีโน้ตใน'+SPACES[curSpace].label+'<br>พิมพ์ด้านบนแล้วกด ➕ หรือกดไมค์พูดได้เลย</div>';
+    return;
+  }
+
+  let html = '', lastDay = '';
+  const cats = SPACES[curSpace].cats;
+  const otherLabel = curSpace==='work' ? '→ 🏠' : '→ 💼';
+  for (const n of shown) {
+    const dl = dayLabel(n.ts);
+    if (dl !== lastDay) {
+      html += `<div class="day-head ${dl.startsWith('📌')?'today':''}">${dl}</div>`;
+      lastDay = dl;
+    }
+    const time = new Date(n.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+    const ci = cats[n.cat] || Object.values(cats)[0];
+    html += `
+      <div class="note ${n.done?'done':''}" style="--c:${ci.color}">
+        <button class="n-check" onclick="toggleDone(${n.id})">${n.done?'✓':''}</button>
+        <div class="n-body">
+          <div class="n-text">${esc(n.text)}</div>
+          <div class="n-meta">
+            <span class="n-cat-tag" style="color:${ci.color}">${ci.label}</span>
+            <span>${time} น.</span>
+            <button class="n-move" onclick="moveNote(${n.id})" title="ย้ายโหมด">${otherLabel}</button>
+          </div>
+        </div>
+        <button class="n-del" onclick="delNote(${n.id})">🗑</button>
+      </div>`;
+  }
+  list.innerHTML = html;
+}
+
+/* ===== Voice input (Thai) ===== */
+let recog = null, listening = false;
+function toggleMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('เบราว์เซอร์นี้ไม่รองรับการพูด ใช้ Chrome นะครับ'); return; }
+  if (listening) { recog.stop(); return; }
+  recog = new SR();
+  recog.lang = 'th-TH';
+  recog.interimResults = true;
+  recog.continuous = false;
+  const inp = document.getElementById('noteInput');
+  const base = inp.value ? inp.value + ' ' : '';
+  recog.onresult = e => {
+    let t = '';
+    for (const r of e.results) t += r[0].transcript;
+    inp.value = base + t;
+    autoGrow(inp);
+  };
+  recog.onstart = () => { listening=true; document.getElementById('micBtn').classList.add('listening'); };
+  recog.onend = () => {
+    listening=false; document.getElementById('micBtn').classList.remove('listening');
+    if (inp.value.trim()) inp.focus();
+  };
+  recog.onerror = () => { listening=false; document.getElementById('micBtn').classList.remove('listening'); };
+  recog.start();
+}
+
+/* ===== PWA ===== */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+/* ===== Init ===== */
+pickSpace(curSpace);
+</script>
+</body>
+</html>
